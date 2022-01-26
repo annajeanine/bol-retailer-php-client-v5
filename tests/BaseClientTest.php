@@ -1,22 +1,23 @@
 <?php
 
 
-namespace Picqer\BolRetailer\Tests;
+namespace Picqer\BolRetailerV5\Tests;
 
 use GuzzleHttp\Exception\ClientException as GuzzleClientException;
 use GuzzleHttp\Psr7\Message;
 use GuzzleHttp\Client as HttpClient;
 use GuzzleHttp\Psr7\Request;
 use PHPUnit\Framework\TestCase;
-use Picqer\BolRetailer\BaseClient;
-use Picqer\BolRetailer\Exception\RateLimitException;
-use Picqer\BolRetailer\Exception\ResponseException;
-use Picqer\BolRetailer\Exception\ServerException;
-use Picqer\BolRetailer\Exception\UnauthorizedException;
-use Picqer\BolRetailer\Model\AbstractModel;
+use Picqer\BolRetailerV5\BaseClient;
+use Picqer\BolRetailerV5\Exception\RateLimitException;
+use Picqer\BolRetailerV5\Exception\ResponseException;
+use Picqer\BolRetailerV5\Exception\ServerException;
+use Picqer\BolRetailerV5\Exception\UnauthorizedException;
+use Picqer\BolRetailerV5\Model\AbstractModel;
 use Prophecy\Argument;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Prophecy\Prophecy\ObjectProphecy;
+use Psr\Http\Message\ResponseInterface;
 
 class BaseClientTest extends TestCase
 {
@@ -54,9 +55,9 @@ class BaseClientTest extends TestCase
         $this->assertFalse($this->client->isAuthenticated());
     }
 
-    protected function authenticate()
+    protected function authenticate(?ResponseInterface $response = null)
     {
-        $response = Message::parseResponse(file_get_contents(__DIR__ . '/Fixtures/http/200-token'));
+        $response = $response ?? Message::parseResponse(file_get_contents(__DIR__ . '/Fixtures/http/200-token'));
 
         $credentials = base64_encode('secret_id' . ':' . 'somesupersecretvaluethatshouldnotbeshared');
         $this->httpProphecy->request('POST', 'https://login.bol.com/token', [
@@ -75,6 +76,20 @@ class BaseClientTest extends TestCase
     public function testClientIsAuthenticatedAfterSuccessfulAuthentication()
     {
         $this->authenticate();
+
+        $this->assertTrue($this->client->isAuthenticated());
+    }
+
+    public function testClientAcceptsLowercaseScopeInAccessToken()
+    {
+        $this->authenticate(Message::parseResponse(file_get_contents(__DIR__ . '/Fixtures/http/200-token-lowercase-scope')));
+
+        $this->assertTrue($this->client->isAuthenticated());
+    }
+
+    public function testClientAcceptsLowercaseTokenTypeInAccessToken()
+    {
+        $this->authenticate(Message::parseResponse(file_get_contents(__DIR__ . '/Fixtures/http/200-token-lowercase-type')));
 
         $this->assertTrue($this->client->isAuthenticated());
     }
